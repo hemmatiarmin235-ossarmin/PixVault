@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Image ↔ JSON</title>
+
+<style>
+*{
+  box-sizing:border-box;
+  -webkit-tap-highlight-color:transparent;
+}
+
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+  background:#0b0d12;
+  color:#fff;
+}
+
+.app{
+  width:min(900px,100%);
+  margin:auto;
+  padding:20px;
+}
+
+header{
+  text-align:center;
+  padding:25px 10px;
+}
+
+.logo{
+  font-size:32px;
+  font-weight:900;
+  letter-spacing:-1px;
+}
+
+.logo span{
+  color:#7c5cff;
+}
+
+.subtitle{
+  color:#8d93a1;
+  margin-top:8px;
+  font-size:14px;
+}
+
+.tabs{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-bottom:16px;
+}
+
+.tab{
+  border:1px solid #242936;
+  background:#12151d;
+  color:#aaa;
+  padding:15px;
+  border-radius:14px;
+  font-size:15px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.tab.active{
+  background:#7c5cff;
+  border-color:#7c5cff;
+  color:white;
+}
+
+.card{
+  background:#11141b;
+  border:1px solid #242936;
+  border-radius:20px;
+  padding:18px;
+  margin-bottom:15px;
+}
+
+.drop{
+  border:2px dashed #343a4a;
+  border-radius:17px;
+  padding:35px 15px;
+  text-align:center;
+  cursor:pointer;
+  transition:.2s;
+}
+
+.drop:hover{
+  border-color:#7c5cff;
+  background:#151823;
+}
+
+.icon{
+  font-size:45px;
+  margin-bottom:10px;
+}
+
+.drop strong{
+  display:block;
+  font-size:17px;
+}
+
+.drop small{
+  display:block;
+  color:#858b99;
+  margin-top:7px;
+}
+
+input[type=file]{
+  display:none;
+}
+
+.preview{
+  display:none;
+  margin-top:15px;
+  text-align:center;
+}
+
+.preview img{
+  max-width:100%;
+  max-height:380px;
+  border-radius:14px;
+  object-fit:contain;
+  background:#080a0f;
+}
+
+.info{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+  margin-top:15px;
+}
+
+.info div{
+  background:#171a22;
+  padding:12px;
+  border-radius:12px;
+}
+
+.info b{
+  display:block;
+  color:#777e8e;
+  font-size:11px;
+  margin-bottom:4px;
+}
+
+.info span{
+  font-size:13px;
+  word-break:break-word;
+}
+
+.actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:15px;
+}
+
+button{
+  border:0;
+  border-radius:13px;
+  padding:14px;
+  font-size:14px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.primary{
+  background:#7c5cff;
+  color:white;
+}
+
+.secondary{
+  background:#20242e;
+  color:white;
+}
+
+button:disabled{
+  opacity:.4;
+  cursor:not-allowed;
+}
+
+.status{
+  margin-top:15px;
+  padding:13px;
+  border-radius:12px;
+  background:#171a22;
+  color:#aeb4c2;
+  font-size:13px;
+  text-align:center;
+  display:none;
+}
+
+.hidden{
+  display:none;
+}
+
+.note{
+  color:#777e8e;
+  font-size:12px;
+  line-height:1.8;
+  margin-top:12px;
+}
+
+@media(max-width:550px){
+  .app{
+    padding:12px;
+  }
+
+  header{
+    padding:18px 5px;
+  }
+
+  .logo{
+    font-size:27px;
+  }
+
+  .actions{
+    grid-template-columns:1fr;
+  }
+
+  .info{
+    grid-template-columns:1fr 1fr;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<header>
+  <div class="logo">IMAGE <span>↔</span> JSON</div>
+  <div class="subtitle">
+    انتقال تصویر در قالب یک فایل JSON
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" id="imageTab">🖼️ تصویر → JSON</button>
+  <button class="tab" id="jsonTab">📄 JSON → تصویر</button>
+</div>
+
+<!-- IMAGE TO JSON -->
+
+<section id="imageSection">
+
+<div class="card">
+
+<label class="drop" for="imageInput">
+  <div class="icon">🖼️</div>
+  <strong>انتخاب تصویر</strong>
+  <small>PNG / JPG / WEBP و فرمت‌های پشتیبانی‌شده</small>
+</label>
+
+<input id="imageInput" type="file" accept="image/*">
+
+<div class="preview" id="imagePreview">
+  <img id="previewImage">
+
+  <div class="info">
+    <div>
+      <b>نام فایل</b>
+      <span id="imageName">-</span>
+    </div>
+
+    <div>
+      <b>حجم</b>
+      <span id="imageSize">-</span>
+    </div>
+
+    <div>
+      <b>ابعاد</b>
+      <span id="imageDimensions">-</span>
+    </div>
+
+    <div>
+      <b>نوع</b>
+      <span id="imageType">-</span>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="primary" id="shareJson">
+      📤 اشتراک‌گذاری JSON
+    </button>
+
+    <button class="secondary" id="saveJson">
+      💾 ذخیره JSON
+    </button>
+  </div>
+
+  <div class="status" id="imageStatus"></div>
+
+  <div class="note">
+    خود تصویر داخل فایل JSON قرار می‌گیرد. نیازی به Copy کردن Base64 نیست.
+  </div>
+</div>
+
+</div>
+</section>
+
+
+<!-- JSON TO IMAGE -->
+
+<section id="jsonSection" class="hidden">
+
+<div class="card">
+
+<label class="drop" for="jsonInput">
+  <div class="icon">📄</div>
+  <strong>انتخاب فایل JSON</strong>
+  <small>فایل JSON ساخته‌شده توسط این ابزار را انتخاب کنید</small>
+</label>
+
+<input id="jsonInput" type="file" accept=".json,application/json">
+
+<div class="preview" id="jsonPreview">
+
+  <img id="jsonImage">
+
+  <div class="info">
+    <div>
+      <b>نام تصویر</b>
+      <span id="jsonImageName">-</span>
+    </div>
+
+    <div>
+      <b>نوع</b>
+      <span id="jsonImageType">-</span>
+    </div>
+
+    <div>
+      <b>ابعاد</b>
+      <span id="jsonImageDimensions">-</span>
+    </div>
+
+    <div>
+      <b>حجم تقریبی</b>
+      <span id="jsonImageSize">-</span>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="primary" id="shareImage">
+      📤 اشتراک‌گذاری تصویر
+    </button>
+
+    <button class="secondary" id="saveImage">
+      💾 ذخیره تصویر
+    </button>
+  </div>
+
+  <div class="status" id="jsonStatus"></div>
+
+</div>
+
+</div>
+</section>
+
+</div>
+
+<script>
+let currentImageJSON = null;
+let currentImageBlob = null;
+let currentImageName = "image.png";
+
+const imageTab = document.getElementById("imageTab");
+const jsonTab = document.getElementById("jsonTab");
+
+const imageSection = document.getElementById("imageSection");
+const jsonSection = document.getElementById("jsonSection");
+
+imageTab.onclick = () => {
+  imageTab.classList.add("active");
+  jsonTab.classList.remove("active");
+
+  imageSection.classList.remove("hidden");
+  jsonSection.classList.add("hidden");
+};
+
+jsonTab.onclick = () => {
+  jsonTab.classList.add("active");
+  imageTab.classList.remove("active");
+
+  jsonSection.classList.remove("hidden");
+  imageSection.classList.add("hidden");
+};
+
+
+/* =========================
+   IMAGE → JSON
+========================= */
+
+const imageInput = document.getElementById("imageInput");
+
+imageInput.addEventListener("change", async () => {
+
+  const file = imageInput.files[0];
+
+  if(!file) return;
+
+  const status = document.getElementById("imageStatus");
+
+  try{
+
+    status.style.display = "block";
+    status.textContent = "⏳ در حال آماده‌سازی تصویر...";
+
+    const dataURL = await fileToDataURL(file);
+
+    const img = new Image();
+
+    img.onload = async () => {
+
+      currentImageJSON = {
+        version: 1,
+        name: file.name,
+        type: file.type || "application/octet-stream",
+        size: file.size,
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+        data: dataURL
+      };
+
+      document.getElementById("previewImage").src = dataURL;
+
+      document.getElementById("imageName").textContent =
+        file.name;
+
+      document.getElementById("imageSize").textContent =
+        formatBytes(file.size);
+
+      document.getElementById("imageDimensions").textContent =
+        img.naturalWidth + " × " + img.naturalHeight;
+
+      document.getElementById("imageType").textContent =
+        file.type || "Unknown";
+
+      document.getElementById("imagePreview").style.display =
+        "block";
+
+      status.textContent =
+        "✅ آماده است. فایل JSON را ذخیره یا ارسال کن.";
+
+    };
+
+    img.onerror = () => {
+      status.textContent = "❌ تصویر قابل خواندن نیست.";
+    };
+
+    img.src = dataURL;
+
+  }catch(err){
+
+    console.error(err);
+
+    status.style.display = "block";
+    status.textContent =
+      "❌ خطا: " + err.message;
+  }
+
+});
+
+
+function fileToDataURL(file){
+
+  return new Promise((resolve,reject)=>{
+
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+
+    reader.readAsDataURL(file);
+
+  });
+
+}
+
+
+/* =========================
+   JSON FILE
+========================= */
+
+function buildJSONFile(){
+
+  const text = JSON.stringify(
+    currentImageJSON,
+    null,
+    2
+  );
+
+  return new File(
+    [text],
+    removeExtension(currentImageJSON.name) + ".json",
+    {
+      type:"application/json"
+    }
+  );
+
+}
+
+
+/* =========================
+   SHARE JSON
+========================= */
+
+document.getElementById("shareJson").onclick =
+async () => {
+
+  if(!currentImageJSON) return;
+
+  const status =
+    document.getElementById("imageStatus");
+
+  try{
+
+    const file = buildJSONFile();
+
+    if(
+      navigator.share &&
+      (!navigator.canShare ||
+       navigator.canShare({files:[file]}))
+    ){
+
+      await navigator.share({
+        title:"Image JSON",
+        text:"فایل JSON تصویر",
+        files:[file]
+      });
+
+      status.style.display = "block";
+      status.textContent =
+        "✅ فایل برای اشتراک‌گذاری ارسال شد.";
+
+      return;
+    }
+
+    status.style.display = "block";
+    status.textContent =
+      "⚠️ اشتراک‌گذاری فایل در این محیط پشتیبانی نمی‌شود. از Chrome استفاده کن.";
+
+  }catch(err){
+
+    if(err.name === "AbortError"){
+      status.textContent =
+        "اشتراک‌گذاری لغو شد.";
+      return;
+    }
+
+    console.error(err);
+
+    status.style.display = "block";
+    status.textContent =
+      "❌ اشتراک‌گذاری ناموفق بود.";
+
+  }
+
+};
+
+
+/* =========================
+   SAVE JSON
+========================= */
+
+document.getElementById("saveJson").onclick =
+async () => {
+
+  if(!currentImageJSON) return;
+
+  const status =
+    document.getElementById("imageStatus");
+
+  const file = buildJSONFile();
+
+  try{
+
+    /*
+      اول File System Access API
+      برای مرورگرهایی که پشتیبانی می‌کنند
+    */
+
+    if("showSaveFilePicker" in window){
+
+      const handle =
+        await window.showSaveFilePicker({
+
+          suggestedName:file.name,
+
+          types:[{
+            description:"JSON File",
+            accept:{
+              "application/json":[".json"]
+            }
+          }]
+
+        });
+
+      const writable =
+        await handle.createWritable();
+
+      await writable.write(file);
+
+      await writable.close();
+
+      status.style.display = "block";
+      status.textContent =
+        "✅ فایل JSON ذخیره شد.";
+
+      return;
+    }
+
+    /*
+      اگر محیط File Picker ندارد،
+      از Share استفاده می‌کنیم.
+    */
+
+    if(
+      navigator.share &&
+      (!navigator.canShare ||
+       navigator.canShare({files:[file]}))
+    ){
+
+      await navigator.share({
+        title:file.name,
+        files:[file]
+      });
+
+      status.style.display = "block";
+      status.textContent =
+        "✅ فایل JSON ارسال شد.";
+
+      return;
+    }
+
+    status.style.display = "block";
+    status.textContent =
+      "⚠️ این محیط امکان ذخیره مستقیم فایل را ندارد. صفحه را در Chrome باز کن.";
+
+  }catch(err){
+
+    if(err.name === "AbortError"){
+      status.textContent =
+        "ذخیره لغو شد.";
+      return;
+    }
+
+    console.error(err);
+
+    status.style.display = "block";
+    status.textContent =
+      "❌ ذخیره فایل انجام نشد.";
+
+  }
+
+};
+
+
+/* =========================
+   JSON → IMAGE
+========================= */
+
+const jsonInput =
+  document.getElementById("jsonInput");
+
+jsonInput.addEventListener("change", async () => {
+
+  const file = jsonInput.files[0];
+
+  if(!file) return;
+
+  const status =
+    document.getElementById("jsonStatus");
+
+  try{
+
+    status.style.display = "block";
+    status.textContent =
+      "⏳ در حال خواندن JSON...";
+
+    const text =
+      await file.text();
+
+    const json =
+      JSON.parse(text);
+
+    const data =
+      json.data ||
+      json.image ||
+      json.base64;
+
+    if(
+      typeof data !== "string" ||
+      !data.startsWith("data:image/")
+    ){
+
+      throw new Error(
+        "اطلاعات تصویر داخل JSON پیدا نشد."
+      );
+
+    }
+
+    currentImageBlob =
+      dataURLToBlob(data);
+
+    currentImageName =
+      json.name ||
+      "restored-image.png";
+
+    const img =
+      document.getElementById("jsonImage");
+
+    img.src = data;
+
+    img.onload = () => {
+
+      document.getElementById(
+        "jsonImageName"
+      ).textContent =
+        currentImageName;
+
+      document.getElementById(
+        "jsonImageType"
+      ).textContent =
+        json.type || currentImageBlob.type;
+
+      document.getElementById(
+        "jsonImageDimensions"
+      ).textContent =
+        (json.width || img.naturalWidth)
+        + " × " +
+        (json.height || img.naturalHeight);
+
+      document.getElementById(
+        "jsonImageSize"
+      ).textContent =
+        formatBytes(currentImageBlob.size);
+
+      document.getElementById(
+        "jsonPreview"
+      ).style.display = "block";
+
+      status.textContent =
+        "✅ تصویر با موفقیت استخراج شد.";
+
+    };
+
+  }catch(err){
+
+    console.error(err);
+
+    status.style.display = "block";
+
+    status.textContent =
+      "❌ JSON نامعتبر است یا تصویر داخل آن وجود ندارد.";
+
+  }
+
+});
+
+
+function dataURLToBlob(dataURL){
+
+  const parts =
+    dataURL.split(",");
+
+  const mime =
+    parts[0]
+      .match(/:(.*?);/)[1];
+
+  const binary =
+    atob(parts[1]);
+
+  const bytes =
+    new Uint8Array(binary.length);
+
+  for(let i=0;i<binary.length;i++){
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  return new Blob(
+    [bytes],
+    {type:mime}
+  );
+
+}
+
+
+/* =========================
+   SHARE IMAGE
+========================= */
+
+document.getElementById("shareImage").onclick =
+async () => {
+
+  if(!currentImageBlob) return;
+
+  const status =
+    document.getElementById("jsonStatus");
+
+  try{
+
+    const file =
+      new File(
+        [currentImageBlob],
+        currentImageName,
+        {
+          type:currentImageBlob.type
+        }
+      );
+
+    if(
+      navigator.share &&
+      (!navigator.canShare ||
+       navigator.canShare({files:[file]}))
+    ){
+
+      await navigator.share({
+        title:currentImageName,
+        files:[file]
+      });
+
+      status.textContent =
+        "✅ تصویر برای اشتراک‌گذاری ارسال شد.";
+
+      return;
+    }
+
+    status.textContent =
+      "⚠️ اشتراک‌گذاری فایل در این محیط پشتیبانی نمی‌شود.";
+
+  }catch(err){
+
+    if(err.name === "AbortError"){
+      status.textContent =
+        "اشتراک‌گذاری لغو شد.";
+      return;
+    }
+
+    status.textContent =
+      "❌ اشتراک‌گذاری تصویر انجام نشد.";
+
+  }
+
+};
+
+
+/* =========================
+   SAVE IMAGE
+========================= */
+
+document.getElementById("saveImage").onclick =
+async () => {
+
+  if(!currentImageBlob) return;
+
+  const status =
+    document.getElementById("jsonStatus");
+
+  const file =
+    new File(
+      [currentImageBlob],
+      currentImageName,
+      {
+        type:currentImageBlob.type
+      }
+    );
+
+  try{
+
+    if("showSaveFilePicker" in window){
+
+      const extension =
+        getExtension(currentImageName);
+
+      const handle =
+        await window.showSaveFilePicker({
+
+          suggestedName:currentImageName,
+
+          types:[{
+            description:"Image",
+            accept:{
+              [currentImageBlob.type]:[extension]
+            }
+          }]
+
+        });
+
+      const writable =
+        await handle.createWritable();
+
+      await writable.write(file);
+
+      await writable.close();
+
+      status.textContent =
+        "✅ تصویر ذخیره شد.";
+
+      return;
+    }
+
+    if(
+      navigator.share &&
+      (!navigator.canShare ||
+       navigator.canShare({files:[file]}))
+    ){
+
+      await navigator.share({
+        title:currentImageName,
+        files:[file]
+      });
+
+      status.textContent =
+        "✅ تصویر ارسال شد.";
+
+      return;
+    }
+
+    status.textContent =
+      "⚠️ این محیط امکان ذخیره مستقیم فایل را ندارد. صفحه را در Chrome باز کن.";
+
+  }catch(err){
+
+    if(err.name === "AbortError"){
+      status.textContent =
+        "ذخیره لغو شد.";
+      return;
+    }
+
+    console.error(err);
+
+    status.textContent =
+      "❌ ذخیره تصویر انجام نشد.";
+
+  }
+
+};
+
+
+/* =========================
+   HELPERS
+========================= */
+
+function formatBytes(bytes){
+
+  if(bytes < 1024)
+    return bytes + " B";
+
+  if(bytes < 1024*1024)
+    return (bytes/1024).toFixed(1) + " KB";
+
+  if(bytes < 1024*1024*1024)
+    return (bytes/(1024*1024)).toFixed(2) + " MB";
+
+  return (bytes/(1024*1024*1024)).toFixed(2) + " GB";
+}
+
+
+function removeExtension(name){
+
+  return name.replace(/\.[^/.]+$/,"");
+
+}
+
+
+function getExtension(name){
+
+  const match =
+    name.match(/\.[^/.]+$/);
+
+  return match ? match[0] : ".png";
+
+}
+
+</script>
+
+</body>
+</html>
