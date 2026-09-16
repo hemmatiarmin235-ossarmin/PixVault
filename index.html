@@ -1,983 +1,1404 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Image ↔ JSON</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0b" />
+  <meta name="description" content="PixVault — Portable Image Container. Convert images to self-contained JSON and back. Fully offline." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>PixVault — Portable Image Container</title>
+  <style>
+    :root {
+      --bg: #0a0a0b;
+      --bg2: #111113;
+      --surface: rgba(255,255,255,0.045);
+      --surface2: rgba(255,255,255,0.07);
+      --glass: rgba(16,16,18,0.78);
+      --border: rgba(255,255,255,0.08);
+      --border2: rgba(255,255,255,0.12);
+      --text: #f4f4f5;
+      --text2: #a1a1aa;
+      --muted: #71717a;
+      --accent: #10b981;
+      --accent2: #22d3ee;
+      --accent-dim: rgba(16,185,129,0.14);
+      --danger: #f43f5e;
+      --warn: #f59e0b;
+      --radius: 16px;
+      --radius-sm: 12px;
+      --shadow: 0 8px 28px rgba(0,0,0,0.38);
+      --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --safe-b: env(safe-area-inset-bottom, 0px);
+      --safe-t: env(safe-area-inset-top, 0px);
+      --trans: 0.18s ease;
+    }
+    [data-theme="light"] {
+      --bg: #f4f4f5;
+      --bg2: #ffffff;
+      --surface: rgba(0,0,0,0.035);
+      --surface2: rgba(0,0,0,0.06);
+      --glass: rgba(255,255,255,0.82);
+      --border: rgba(0,0,0,0.08);
+      --border2: rgba(0,0,0,0.12);
+      --text: #18181b;
+      --text2: #52525b;
+      --muted: #71717a;
+      --accent-dim: rgba(16,185,129,0.12);
+      --shadow: 0 8px 28px rgba(0,0,0,0.08);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{height:100%;-webkit-text-size-adjust:100%}
+    body{
+      font-family:var(--font);
+      background:var(--bg);
+      color:var(--text);
+      min-height:100%;min-height:100dvh;
+      line-height:1.5;
+      overflow-x:hidden;
+      -webkit-font-smoothing:antialiased;
+      padding-bottom:calc(12px + var(--safe-b));
+      transition:background var(--trans),color var(--trans);
+    }
+    body.reduced-motion *,body.reduced-motion *::before,body.reduced-motion *::after{
+      animation-duration:0.01ms!important;transition-duration:0.01ms!important;
+    }
+    body::before{
+      content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+      background:
+        radial-gradient(ellipse 70% 45% at 15% -5%,rgba(16,185,129,0.11),transparent),
+        radial-gradient(ellipse 55% 35% at 92% 8%,rgba(34,211,238,0.07),transparent);
+    }
+    .app{position:relative;z-index:1;max-width:720px;margin:0 auto;padding:12px 14px 32px;min-height:100dvh;display:flex;flex-direction:column}
 
-<style>
-*{
-  box-sizing:border-box;
-  -webkit-tap-highlight-color:transparent;
-}
+    header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0 16px;flex-wrap:wrap}
+    .logo h1{font-size:1.28rem;font-weight:700;letter-spacing:-0.03em;display:flex;align-items:center;gap:7px}
+    .logo h1 span{color:var(--accent)}
+    .logo p{font-size:0.72rem;color:var(--muted);font-weight:500;margin-top:1px}
+    .header-actions{display:flex;gap:6px}
+    .icon-btn{
+      width:42px;height:42px;border-radius:12px;border:1px solid var(--border);
+      background:var(--glass);color:var(--text2);display:flex;align-items:center;justify-content:center;
+      cursor:pointer;font-size:1.15rem;transition:all var(--trans);-webkit-tap-highlight-color:transparent;
+    }
+    .icon-btn:hover,.icon-btn:focus-visible{background:var(--surface2);color:var(--text);border-color:rgba(16,185,129,0.35);outline:none}
+    .icon-btn:active{transform:scale(0.94)}
 
-body{
-  margin:0;
-  min-height:100vh;
-  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
-  background:#0b0d12;
-  color:#fff;
-}
+    .tabs{display:flex;background:var(--surface);border-radius:14px;padding:4px;margin-bottom:16px;border:1px solid var(--border)}
+    .tab{
+      flex:1;padding:13px 6px;border:none;background:transparent;color:var(--text2);
+      font-size:0.84rem;font-weight:600;border-radius:11px;cursor:pointer;transition:all var(--trans);
+      -webkit-tap-highlight-color:transparent;min-height:46px;
+    }
+    .tab.active{background:var(--glass);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,0.18);border:1px solid var(--border)}
+    .tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
-.app{
-  width:min(900px,100%);
-  margin:auto;
-  padding:20px;
-}
+    .card{
+      background:var(--glass);border:1px solid var(--border);border-radius:var(--radius);
+      padding:18px;margin-bottom:14px;box-shadow:var(--shadow);
+    }
+    .card h2{font-size:0.92rem;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:7px}
 
-header{
-  text-align:center;
-  padding:25px 10px;
-}
+    .source-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px}
+    .source-btn{
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+      padding:16px 8px;min-height:88px;border-radius:14px;border:1px solid var(--border);
+      background:var(--surface);color:var(--text);font-size:0.78rem;font-weight:600;
+      cursor:pointer;transition:all var(--trans);-webkit-tap-highlight-color:transparent;text-align:center;
+    }
+    .source-btn .ico{font-size:1.55rem;line-height:1}
+    .source-btn:hover,.source-btn:focus-visible{background:var(--accent-dim);border-color:rgba(16,185,129,0.4);outline:none}
+    .source-btn:active{transform:scale(0.97)}
+    .source-btn.secondary{grid-column:1/-1;min-height:52px;flex-direction:row;gap:10px;font-size:0.85rem}
+    .hidden-input{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0,0,0,0)}
 
-.logo{
-  font-size:32px;
-  font-weight:900;
-  letter-spacing:-1px;
-}
+    .drop-hint{
+      display:none;text-align:center;padding:14px;border:1.5px dashed var(--border);border-radius:12px;
+      color:var(--muted);font-size:0.8rem;margin-bottom:12px;transition:all var(--trans);
+    }
+    .drop-hint.dragover{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
+    @media (min-width:768px){.drop-hint{display:block}}
 
-.logo span{
-  color:#7c5cff;
-}
+    .batch-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+    .batch-item{
+      display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);
+      border:1px solid var(--border);border-radius:12px;font-size:0.82rem;
+    }
+    .batch-item .thumb{width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--bg2);flex-shrink:0}
+    .batch-item .info{flex:1;min-width:0}
+    .batch-item .name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .batch-item .meta{color:var(--muted);font-size:0.75rem}
+    .batch-item .status{font-size:0.72rem;font-weight:600;flex-shrink:0}
+    .batch-item .status.ok{color:var(--accent)}
+    .batch-item .status.err{color:var(--danger)}
+    .batch-item .status.wait{color:var(--warn)}
+    .batch-item .rm{
+      width:32px;height:32px;border:none;background:transparent;color:var(--muted);
+      font-size:1.1rem;cursor:pointer;border-radius:8px;flex-shrink:0;
+    }
+    .batch-item .rm:hover{background:var(--surface2);color:var(--danger)}
 
-.subtitle{
-  color:#8d93a1;
-  margin-top:8px;
-  font-size:14px;
-}
+    .preview-wrap{display:none;flex-direction:column;gap:12px}
+    .preview-wrap.visible{display:flex}
+    .preview-stage{
+      position:relative;border-radius:var(--radius-sm);overflow:hidden;background:var(--bg2);
+      border:1px solid var(--border);min-height:180px;max-height:320px;
+      display:flex;align-items:center;justify-content:center;touch-action:none;
+    }
+    .preview-stage img{
+      max-width:100%;max-height:320px;object-fit:contain;display:block;
+      transition:transform 0.15s ease;transform-origin:center center;
+      user-select:none;-webkit-user-select:none;
+    }
+    .preview-tools{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+    .tool-btn{
+      min-width:40px;height:36px;padding:0 10px;border-radius:10px;border:1px solid var(--border);
+      background:var(--surface);color:var(--text2);font-size:0.78rem;font-weight:600;
+      cursor:pointer;transition:all var(--trans);-webkit-tap-highlight-color:transparent;
+    }
+    .tool-btn:hover,.tool-btn:focus-visible{background:var(--surface2);color:var(--text);outline:none}
+    .tool-btn:active{transform:scale(0.95)}
 
-.tabs{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-  margin-bottom:16px;
-}
+    .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    @media(min-width:520px){.meta-grid{grid-template-columns:repeat(3,1fr)}}
+    .meta-item{background:var(--surface);border-radius:10px;padding:9px 11px;border:1px solid var(--border)}
+    .meta-item .label{font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px}
+    .meta-item .value{font-size:0.84rem;font-weight:600;word-break:break-all}
 
-.tab{
-  border:1px solid #242936;
-  background:#12151d;
-  color:#aaa;
-  padding:15px;
-  border-radius:14px;
-  font-size:15px;
-  font-weight:700;
-  cursor:pointer;
-}
+    .size-bar{
+      display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;
+      padding:12px;background:var(--accent-dim);border-radius:12px;border:1px solid rgba(16,185,129,0.22);
+      font-size:0.84rem;font-weight:600;color:var(--accent);text-align:center;
+    }
+    .size-bar .sep{opacity:0.45}
 
-.tab.active{
-  background:#7c5cff;
-  border-color:#7c5cff;
-  color:white;
-}
+    .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:7px;
+      padding:13px 16px;border-radius:12px;font-size:0.86rem;font-weight:600;border:none;
+      cursor:pointer;transition:all var(--trans);min-height:46px;flex:1 1 auto;min-width:110px;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    .btn:active{transform:scale(0.97)}
+    .btn-primary{background:linear-gradient(135deg,var(--accent),#059669);color:#fff;box-shadow:0 4px 14px rgba(16,185,129,0.28)}
+    .btn-primary:hover{filter:brightness(1.07)}
+    .btn-secondary{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+    .btn-secondary:hover{background:var(--surface2)}
+    .btn:disabled{opacity:0.42;cursor:not-allowed;transform:none!important}
 
-.card{
-  background:#11141b;
-  border:1px solid #242936;
-  border-radius:20px;
-  padding:18px;
-  margin-bottom:15px;
-}
+    .compress-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
+    .compress-row label{font-size:0.8rem;color:var(--text2);font-weight:500}
+    .q-btn{
+      padding:7px 11px;border-radius:8px;border:1px solid var(--border);background:var(--surface);
+      color:var(--text2);font-size:0.78rem;font-weight:600;cursor:pointer;
+    }
+    .q-btn.active{background:var(--accent-dim);border-color:rgba(16,185,129,0.45);color:var(--accent)}
 
-.drop{
-  border:2px dashed #343a4a;
-  border-radius:17px;
-  padding:35px 15px;
-  text-align:center;
-  cursor:pointer;
-  transition:.2s;
-}
+    .json-input{
+      width:100%;min-height:110px;max-height:180px;background:var(--bg2);border:1px solid var(--border);
+      border-radius:var(--radius-sm);color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      font-size:0.78rem;padding:12px;resize:vertical;outline:none;margin-top:10px;
+    }
+    .json-input:focus{border-color:var(--accent)}
 
-.drop:hover{
-  border-color:#7c5cff;
-  background:#151823;
-}
+    .overlay{
+      position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:100;display:none;
+      align-items:flex-end;justify-content:center;padding:12px;padding-bottom:calc(12px + var(--safe-b));
+      opacity:0;transition:opacity 0.2s ease;
+    }
+    .overlay.visible{display:flex;opacity:1}
+    .sheet{
+      background:var(--bg2);border:1px solid var(--border);border-radius:20px 20px 16px 16px;
+      width:100%;max-width:480px;max-height:88dvh;overflow-y:auto;padding:22px 18px 26px;
+      box-shadow:0 -8px 40px rgba(0,0,0,0.35);transform:translateY(16px);transition:transform 0.22s ease;
+    }
+    .overlay.visible .sheet{transform:translateY(0)}
+    .sheet-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    .sheet-header h3{font-size:1.12rem;font-weight:700}
+    .sheet-close{
+      width:36px;height:36px;border-radius:10px;border:1px solid var(--border);background:var(--surface);
+      color:var(--text2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1.2rem;
+    }
+    .setting-row{
+      display:flex;align-items:center;justify-content:space-between;padding:13px 0;
+      border-bottom:1px solid var(--border);gap:12px;
+    }
+    .setting-row:last-child{border-bottom:none}
+    .setting-label{font-size:0.9rem;font-weight:500}
+    .setting-desc{font-size:0.73rem;color:var(--muted);margin-top:2px}
+    .toggle{position:relative;width:48px;height:28px;flex-shrink:0}
+    .toggle input{opacity:0;width:0;height:0}
+    .toggle-slider{
+      position:absolute;inset:0;background:var(--surface);border:1px solid var(--border);
+      border-radius:999px;cursor:pointer;transition:all var(--trans);
+    }
+    .toggle-slider::before{
+      content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;
+      background:var(--text2);border-radius:50%;transition:all var(--trans);
+    }
+    .toggle input:checked+.toggle-slider{background:var(--accent);border-color:var(--accent)}
+    .toggle input:checked+.toggle-slider::before{transform:translateX(20px);background:#fff}
+    .input-field{
+      width:100%;padding:11px 13px;border-radius:10px;border:1px solid var(--border);
+      background:var(--surface);color:var(--text);font-size:0.86rem;outline:none;margin-top:7px;
+    }
+    .input-field:focus{border-color:var(--accent)}
+    .diag-list{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+    .diag-item{
+      display:flex;justify-content:space-between;align-items:center;padding:9px 11px;
+      background:var(--surface);border-radius:10px;font-size:0.82rem;border:1px solid var(--border);
+    }
+    .diag-ok{color:var(--accent);font-weight:600}
+    .diag-no{color:var(--danger);font-weight:600}
 
-.icon{
-  font-size:45px;
-  margin-bottom:10px;
-}
+    .toast-container{
+      position:fixed;bottom:calc(20px + var(--safe-b));left:50%;transform:translateX(-50%);
+      z-index:200;display:flex;flex-direction:column;gap:7px;width:calc(100% - 28px);max-width:380px;pointer-events:none;
+    }
+    .toast{
+      background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:13px 15px;
+      box-shadow:0 8px 28px rgba(0,0,0,0.32);display:flex;align-items:flex-start;gap:9px;
+      font-size:0.84rem;animation:toastIn 0.28s ease;pointer-events:auto;
+    }
+    .toast.error{border-color:rgba(244,63,94,0.4)}
+    .toast.success{border-color:rgba(16,185,129,0.4)}
+    .toast.warning{border-color:rgba(245,158,11,0.4)}
+    .toast-icon{flex-shrink:0;font-size:1.05rem}
+    .toast-msg{flex:1;line-height:1.4}
+    @keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
-.drop strong{
-  display:block;
-  font-size:17px;
-}
-
-.drop small{
-  display:block;
-  color:#858b99;
-  margin-top:7px;
-}
-
-input[type=file]{
-  display:none;
-}
-
-.preview{
-  display:none;
-  margin-top:15px;
-  text-align:center;
-}
-
-.preview img{
-  max-width:100%;
-  max-height:380px;
-  border-radius:14px;
-  object-fit:contain;
-  background:#080a0f;
-}
-
-.info{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:10px;
-  margin-top:15px;
-}
-
-.info div{
-  background:#171a22;
-  padding:12px;
-  border-radius:12px;
-}
-
-.info b{
-  display:block;
-  color:#777e8e;
-  font-size:11px;
-  margin-bottom:4px;
-}
-
-.info span{
-  font-size:13px;
-  word-break:break-word;
-}
-
-.actions{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-  margin-top:15px;
-}
-
-button{
-  border:0;
-  border-radius:13px;
-  padding:14px;
-  font-size:14px;
-  font-weight:800;
-  cursor:pointer;
-}
-
-.primary{
-  background:#7c5cff;
-  color:white;
-}
-
-.secondary{
-  background:#20242e;
-  color:white;
-}
-
-button:disabled{
-  opacity:.4;
-  cursor:not-allowed;
-}
-
-.status{
-  margin-top:15px;
-  padding:13px;
-  border-radius:12px;
-  background:#171a22;
-  color:#aeb4c2;
-  font-size:13px;
-  text-align:center;
-  display:none;
-}
-
-.hidden{
-  display:none;
-}
-
-.note{
-  color:#777e8e;
-  font-size:12px;
-  line-height:1.8;
-  margin-top:12px;
-}
-
-@media(max-width:550px){
-  .app{
-    padding:12px;
-  }
-
-  header{
-    padding:18px 5px;
-  }
-
-  .logo{
-    font-size:27px;
-  }
-
-  .actions{
-    grid-template-columns:1fr;
-  }
-
-  .info{
-    grid-template-columns:1fr 1fr;
-  }
-}
-</style>
+    .panel{display:none}.panel.active{display:block}
+    .about-content{font-size:0.88rem;color:var(--text2);line-height:1.65}
+    .about-content strong{color:var(--text)}
+    .about-content code{background:var(--surface);padding:2px 6px;border-radius:4px;font-size:0.78rem}
+    .ai-section{margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+    .ai-result{
+      margin-top:10px;padding:11px;background:var(--surface);border-radius:10px;
+      font-size:0.82rem;color:var(--text2);white-space:pre-wrap;max-height:180px;overflow-y:auto;display:none;
+    }
+    .ai-result.visible{display:block}
+    .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.65s linear infinite;display:inline-block}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    footer{margin-top:auto;padding-top:20px;text-align:center;font-size:0.72rem;color:var(--muted)}
+    .recent-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+    .recent-item{
+      display:flex;justify-content:space-between;align-items:center;padding:9px 11px;
+      background:var(--surface);border-radius:10px;font-size:0.8rem;border:1px solid var(--border);
+    }
+    .recent-item .rname{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%}
+    .fullscreen-overlay{
+      position:fixed;inset:0;background:#000;z-index:300;display:none;align-items:center;justify-content:center;
+    }
+    .fullscreen-overlay.visible{display:flex}
+    .fullscreen-overlay img{max-width:100%;max-height:100%;object-fit:contain}
+    .fs-close{
+      position:absolute;top:calc(12px + var(--safe-t));right:14px;width:42px;height:42px;border-radius:12px;
+      border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.5);color:#fff;font-size:1.3rem;
+      display:flex;align-items:center;justify-content:center;cursor:pointer;
+    }
+  </style>
 </head>
-
 <body>
+  <div class="app">
+    <header>
+      <div class="logo">
+        <h1><span>✦</span> PixVault</h1>
+        <p>Portable Image Container</p>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" id="btn-theme" aria-label="Toggle theme" title="Theme">◐</button>
+        <button class="icon-btn" id="btn-settings" aria-label="Settings" title="Settings">⚙</button>
+        <button class="icon-btn" id="btn-about" aria-label="About" title="About">ℹ</button>
+      </div>
+    </header>
 
-<div class="app">
+    <div class="tabs" role="tablist">
+      <button class="tab active" role="tab" aria-selected="true" data-tab="img2json" id="tab-img2json">IMAGE → JSON</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="json2img" id="tab-json2img">JSON → IMAGE</button>
+    </div>
 
-<header>
-  <div class="logo">IMAGE <span>↔</span> JSON</div>
-  <div class="subtitle">
-    انتقال تصویر در قالب یک فایل JSON
+    <!-- IMAGE → JSON -->
+    <div class="panel active" id="panel-img2json" role="tabpanel">
+      <div class="card">
+        <h2>Add Image(s)</h2>
+
+        <!-- CRITICAL: separate inputs — Gallery has NO capture, Camera HAS capture -->
+        <input type="file" id="input-gallery" class="hidden-input" accept="image/*" multiple />
+        <input type="file" id="input-camera" class="hidden-input" accept="image/*" capture="environment" />
+        <input type="file" id="input-files" class="hidden-input" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif,image/bmp,image/svg+xml,.png,.jpg,.jpeg,.webp,.gif,.bmp" multiple />
+
+        <div class="source-grid">
+          <button type="button" class="source-btn" id="btn-gallery" aria-label="Choose from Gallery or Photos">
+            <span class="ico">🖼️</span>
+            <span>Gallery</span>
+          </button>
+          <button type="button" class="source-btn" id="btn-camera" aria-label="Take photo with Camera">
+            <span class="ico">📷</span>
+            <span>Camera</span>
+          </button>
+          <button type="button" class="source-btn" id="btn-files" aria-label="Choose from Files">
+            <span class="ico">📁</span>
+            <span>Files</span>
+          </button>
+          <button type="button" class="source-btn secondary" id="btn-paste" aria-label="Paste image from clipboard">
+            <span class="ico">📋</span>
+            <span>Paste Image</span>
+          </button>
+        </div>
+
+        <div class="drop-hint" id="drop-hint">Drop images here (Desktop)</div>
+        <div class="batch-list" id="batch-list" style="display:none"></div>
+
+        <div class="preview-wrap" id="preview-wrap">
+          <div class="preview-stage" id="preview-stage">
+            <img id="preview-img" alt="Preview" draggable="false" />
+          </div>
+          <div class="preview-tools" id="preview-tools">
+            <button type="button" class="tool-btn" data-tool="rotate" title="Rotate 90°">↻ 90°</button>
+            <button type="button" class="tool-btn" data-tool="flipH" title="Flip Horizontal">↔ Flip</button>
+            <button type="button" class="tool-btn" data-tool="flipV" title="Flip Vertical">↕ Flip</button>
+            <button type="button" class="tool-btn" data-tool="zoomIn" title="Zoom In">＋</button>
+            <button type="button" class="tool-btn" data-tool="zoomOut" title="Zoom Out">－</button>
+            <button type="button" class="tool-btn" data-tool="fit" title="Fit">Fit</button>
+            <button type="button" class="tool-btn" data-tool="actual" title="Actual size">1:1</button>
+            <button type="button" class="tool-btn" data-tool="fs" title="Fullscreen">⛶</button>
+            <button type="button" class="tool-btn" data-tool="reset" title="Reset">Reset</button>
+          </div>
+          <div class="meta-grid" id="meta-grid"></div>
+          <div class="size-bar" id="size-bar"></div>
+          <div class="compress-row" id="compress-row">
+            <label>Quality (optional):</label>
+            <button type="button" class="q-btn active" data-q="100">100%</button>
+            <button type="button" class="q-btn" data-q="90">90%</button>
+            <button type="button" class="q-btn" data-q="80">80%</button>
+            <button type="button" class="q-btn" data-q="70">70%</button>
+            <button type="button" class="q-btn" data-q="60">60%</button>
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" id="btn-encode" disabled>Create PixVault JSON</button>
+            <button class="btn btn-secondary" id="btn-share-json" disabled>Share</button>
+            <button class="btn btn-secondary" id="btn-save-json" disabled>Save</button>
+            <button class="btn btn-secondary" id="btn-copy-json" disabled>Copy JSON</button>
+            <button class="btn btn-secondary" id="btn-clear-img">Clear</button>
+          </div>
+          <div class="ai-section" id="ai-section-img" style="display:none">
+            <button class="btn btn-secondary" id="btn-ai-describe" style="width:100%">✦ AI: Describe Image</button>
+            <div class="ai-result" id="ai-result-img"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- JSON → IMAGE -->
+    <div class="panel" id="panel-json2img" role="tabpanel">
+      <div class="card">
+        <h2>Import PixVault JSON</h2>
+        <input type="file" id="input-json" class="hidden-input" accept=".json,application/json,.pixvault.json" multiple />
+        <div class="source-grid" style="grid-template-columns:1fr 1fr">
+          <button type="button" class="source-btn" id="btn-json-file" aria-label="Choose JSON file">
+            <span class="ico">📄</span>
+            <span>Choose File</span>
+          </button>
+          <button type="button" class="source-btn" id="btn-json-paste" aria-label="Paste JSON">
+            <span class="ico">📋</span>
+            <span>Paste JSON</span>
+          </button>
+        </div>
+        <div class="drop-hint" id="drop-hint-json">Drop .json / .pixvault.json here</div>
+        <textarea class="json-input" id="json-textarea" placeholder="Paste PixVault JSON here…" aria-label="JSON input" spellcheck="false"></textarea>
+        <div class="actions" style="margin-top:10px">
+          <button class="btn btn-primary" id="btn-decode">Decode → Image</button>
+          <button class="btn btn-secondary" id="btn-clear-json">Clear</button>
+        </div>
+      </div>
+      <div class="card" id="result-card" style="display:none">
+        <h2>Restored Image</h2>
+        <div class="preview-stage">
+          <img id="result-img" alt="Restored image" />
+        </div>
+        <div class="meta-grid" id="result-meta" style="margin-top:10px"></div>
+        <div class="actions" style="margin-top:12px">
+          <button class="btn btn-primary" id="btn-share-img">Share Image</button>
+          <button class="btn btn-secondary" id="btn-save-img">Save Image</button>
+          <button class="btn btn-secondary" id="btn-copy-img">Copy Image</button>
+        </div>
+        <div class="ai-section" id="ai-section-json" style="display:none">
+          <button class="btn btn-secondary" id="btn-ai-analyze" style="width:100%">✦ AI: Analyze</button>
+          <div class="ai-result" id="ai-result-json"></div>
+        </div>
+      </div>
+    </div>
+
+    <footer>PixVault · 100% local · No upload</footer>
   </div>
-</header>
 
-<div class="tabs">
-  <button class="tab active" id="imageTab">🖼️ تصویر → JSON</button>
-  <button class="tab" id="jsonTab">📄 JSON → تصویر</button>
-</div>
-
-<!-- IMAGE TO JSON -->
-
-<section id="imageSection">
-
-<div class="card">
-
-<label class="drop" for="imageInput">
-  <div class="icon">🖼️</div>
-  <strong>انتخاب تصویر</strong>
-  <small>PNG / JPG / WEBP و فرمت‌های پشتیبانی‌شده</small>
-</label>
-
-<input id="imageInput" type="file" accept="image/*">
-
-<div class="preview" id="imagePreview">
-  <img id="previewImage">
-
-  <div class="info">
-    <div>
-      <b>نام فایل</b>
-      <span id="imageName">-</span>
-    </div>
-
-    <div>
-      <b>حجم</b>
-      <span id="imageSize">-</span>
-    </div>
-
-    <div>
-      <b>ابعاد</b>
-      <span id="imageDimensions">-</span>
-    </div>
-
-    <div>
-      <b>نوع</b>
-      <span id="imageType">-</span>
+  <!-- Settings -->
+  <div class="overlay" id="settings-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="sheet">
+      <div class="sheet-header">
+        <h3 id="settings-title">Settings</h3>
+        <button class="sheet-close" id="settings-close" aria-label="Close">×</button>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Dark Mode</div><div class="setting-desc">Default theme</div></div>
+        <label class="toggle"><input type="checkbox" id="setting-dark" checked /><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Reduced Motion</div><div class="setting-desc">Minimize animations</div></div>
+        <label class="toggle"><input type="checkbox" id="setting-motion" /><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">File Size Warning</div><div class="setting-desc">Warn above 8 MB</div></div>
+        <label class="toggle"><input type="checkbox" id="setting-size-warn" checked /><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">AI Tools</div><div class="setting-desc">Optional Grok features</div></div>
+        <label class="toggle"><input type="checkbox" id="setting-ai" /><span class="toggle-slider"></span></label>
+      </div>
+      <div id="ai-key-wrap" style="display:none;padding:6px 0 14px">
+        <div class="setting-label">Grok API Key</div>
+        <div class="setting-desc">Stored only in this browser</div>
+        <input type="password" class="input-field" id="setting-api-key" placeholder="xai-..." autocomplete="off" />
+        <button class="btn btn-secondary" id="btn-save-key" style="margin-top:8px;width:100%">Save Key</button>
+      </div>
+      <div class="setting-row" style="flex-direction:column;align-items:stretch">
+        <div class="setting-label" style="margin-bottom:6px">Recent Files (metadata only)</div>
+        <div class="recent-list" id="recent-list"></div>
+        <button class="btn btn-secondary" id="btn-clear-history" style="margin-top:8px;width:100%">Clear History</button>
+      </div>
+      <div class="setting-row" style="flex-direction:column;align-items:stretch">
+        <div class="setting-label" style="margin-bottom:6px">System Diagnostics</div>
+        <div class="diag-list" id="diag-list"></div>
+      </div>
     </div>
   </div>
 
-  <div class="actions">
-    <button class="primary" id="shareJson">
-      📤 اشتراک‌گذاری JSON
-    </button>
-
-    <button class="secondary" id="saveJson">
-      💾 ذخیره JSON
-    </button>
-  </div>
-
-  <div class="status" id="imageStatus"></div>
-
-  <div class="note">
-    خود تصویر داخل فایل JSON قرار می‌گیرد. نیازی به Copy کردن Base64 نیست.
-  </div>
-</div>
-
-</div>
-</section>
-
-
-<!-- JSON TO IMAGE -->
-
-<section id="jsonSection" class="hidden">
-
-<div class="card">
-
-<label class="drop" for="jsonInput">
-  <div class="icon">📄</div>
-  <strong>انتخاب فایل JSON</strong>
-  <small>فایل JSON ساخته‌شده توسط این ابزار را انتخاب کنید</small>
-</label>
-
-<input id="jsonInput" type="file" accept=".json,application/json">
-
-<div class="preview" id="jsonPreview">
-
-  <img id="jsonImage">
-
-  <div class="info">
-    <div>
-      <b>نام تصویر</b>
-      <span id="jsonImageName">-</span>
-    </div>
-
-    <div>
-      <b>نوع</b>
-      <span id="jsonImageType">-</span>
-    </div>
-
-    <div>
-      <b>ابعاد</b>
-      <span id="jsonImageDimensions">-</span>
-    </div>
-
-    <div>
-      <b>حجم تقریبی</b>
-      <span id="jsonImageSize">-</span>
+  <!-- About -->
+  <div class="overlay" id="about-overlay" role="dialog" aria-modal="true" aria-labelledby="about-title">
+    <div class="sheet">
+      <div class="sheet-header">
+        <h3 id="about-title">About PixVault</h3>
+        <button class="sheet-close" id="about-close" aria-label="Close">×</button>
+      </div>
+      <div class="about-content">
+        <p><strong>PixVault</strong> converts any image into a self-contained JSON file and back again.</p>
+        <br>
+        <p>Image → PixVault JSON → Share / Save → JSON → Image</p>
+        <br>
+        <p>Everything runs <strong>100% locally</strong>. No uploads. No servers for core features.</p>
+        <br>
+        <p>Format version: <code>1</code> · Encoding: <code>base64-data-url</code></p>
+        <br>
+        <p>Gallery and Camera use <strong>separate file inputs</strong> so mobile browsers correctly open Photos or the camera.</p>
+      </div>
     </div>
   </div>
 
-  <div class="actions">
-    <button class="primary" id="shareImage">
-      📤 اشتراک‌گذاری تصویر
-    </button>
-
-    <button class="secondary" id="saveImage">
-      💾 ذخیره تصویر
-    </button>
+  <div class="fullscreen-overlay" id="fs-overlay">
+    <button class="fs-close" id="fs-close" aria-label="Close fullscreen">×</button>
+    <img id="fs-img" alt="Fullscreen" />
   </div>
 
-  <div class="status" id="jsonStatus"></div>
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
 
-</div>
+  <script>
+  (function(){
+    "use strict";
 
-</div>
-</section>
-
-</div>
-
-<script>
-let currentImageJSON = null;
-let currentImageBlob = null;
-let currentImageName = "image.png";
-
-const imageTab = document.getElementById("imageTab");
-const jsonTab = document.getElementById("jsonTab");
-
-const imageSection = document.getElementById("imageSection");
-const jsonSection = document.getElementById("jsonSection");
-
-imageTab.onclick = () => {
-  imageTab.classList.add("active");
-  jsonTab.classList.remove("active");
-
-  imageSection.classList.remove("hidden");
-  jsonSection.classList.add("hidden");
-};
-
-jsonTab.onclick = () => {
-  jsonTab.classList.add("active");
-  imageTab.classList.remove("active");
-
-  jsonSection.classList.remove("hidden");
-  imageSection.classList.add("hidden");
-};
-
-
-/* =========================
-   IMAGE → JSON
-========================= */
-
-const imageInput = document.getElementById("imageInput");
-
-imageInput.addEventListener("change", async () => {
-
-  const file = imageInput.files[0];
-
-  if(!file) return;
-
-  const status = document.getElementById("imageStatus");
-
-  try{
-
-    status.style.display = "block";
-    status.textContent = "⏳ در حال آماده‌سازی تصویر...";
-
-    const dataURL = await fileToDataURL(file);
-
-    const img = new Image();
-
-    img.onload = async () => {
-
-      currentImageJSON = {
-        version: 1,
-        name: file.name,
-        type: file.type || "application/octet-stream",
-        size: file.size,
-        width: img.naturalWidth,
-        height: img.naturalHeight,
-        data: dataURL
-      };
-
-      document.getElementById("previewImage").src = dataURL;
-
-      document.getElementById("imageName").textContent =
-        file.name;
-
-      document.getElementById("imageSize").textContent =
-        formatBytes(file.size);
-
-      document.getElementById("imageDimensions").textContent =
-        img.naturalWidth + " × " + img.naturalHeight;
-
-      document.getElementById("imageType").textContent =
-        file.type || "Unknown";
-
-      document.getElementById("imagePreview").style.display =
-        "block";
-
-      status.textContent =
-        "✅ آماده است. فایل JSON را ذخیره یا ارسال کن.";
-
+    const S = {
+      theme: "dark",
+      reducedMotion: false,
+      sizeWarn: true,
+      aiEnabled: false,
+      apiKey: "",
+      items: [],
+      activeId: null,
+      restoredBlob: null,
+      restoredUrl: null,
+      restoredMeta: null,
+      scale: 1,
+      rotate: 0,
+      flipH: 1,
+      flipV: 1
     };
 
-    img.onerror = () => {
-      status.textContent = "❌ تصویر قابل خواندن نیست.";
-    };
+    const $ = (s, r=document) => r.querySelector(s);
+    const $$ = (s, r=document) => [...r.querySelectorAll(s)];
 
-    img.src = dataURL;
-
-  }catch(err){
-
-    console.error(err);
-
-    status.style.display = "block";
-    status.textContent =
-      "❌ خطا: " + err.message;
-  }
-
-});
-
-
-function fileToDataURL(file){
-
-  return new Promise((resolve,reject)=>{
-
-    const reader = new FileReader();
-
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error);
-
-    reader.readAsDataURL(file);
-
-  });
-
-}
-
-
-/* =========================
-   JSON FILE
-========================= */
-
-function buildJSONFile(){
-
-  const text = JSON.stringify(
-    currentImageJSON,
-    null,
-    2
-  );
-
-  return new File(
-    [text],
-    removeExtension(currentImageJSON.name) + ".json",
-    {
-      type:"application/json"
+    function fmtBytes(b){
+      if(b==null||isNaN(b)) return "—";
+      if(b===0) return "0 B";
+      const k=1024, sizes=["B","KB","MB","GB"];
+      const i=Math.floor(Math.log(b)/Math.log(k));
+      return parseFloat((b/Math.pow(k,i)).toFixed(i===0?0:1))+" "+sizes[i];
     }
-  );
-
-}
-
-
-/* =========================
-   SHARE JSON
-========================= */
-
-document.getElementById("shareJson").onclick =
-async () => {
-
-  if(!currentImageJSON) return;
-
-  const status =
-    document.getElementById("imageStatus");
-
-  try{
-
-    const file = buildJSONFile();
-
-    if(
-      navigator.share &&
-      (!navigator.canShare ||
-       navigator.canShare({files:[file]}))
-    ){
-
-      await navigator.share({
-        title:"Image JSON",
-        text:"فایل JSON تصویر",
-        files:[file]
-      });
-
-      status.style.display = "block";
-      status.textContent =
-        "✅ فایل برای اشتراک‌گذاری ارسال شد.";
-
-      return;
-    }
-
-    status.style.display = "block";
-    status.textContent =
-      "⚠️ اشتراک‌گذاری فایل در این محیط پشتیبانی نمی‌شود. از Chrome استفاده کن.";
-
-  }catch(err){
-
-    if(err.name === "AbortError"){
-      status.textContent =
-        "اشتراک‌گذاری لغو شد.";
-      return;
-    }
-
-    console.error(err);
-
-    status.style.display = "block";
-    status.textContent =
-      "❌ اشتراک‌گذاری ناموفق بود.";
-
-  }
-
-};
-
-
-/* =========================
-   SAVE JSON
-========================= */
-
-document.getElementById("saveJson").onclick =
-async () => {
-
-  if(!currentImageJSON) return;
-
-  const status =
-    document.getElementById("imageStatus");
-
-  const file = buildJSONFile();
-
-  try{
-
-    /*
-      اول File System Access API
-      برای مرورگرهایی که پشتیبانی می‌کنند
-    */
-
-    if("showSaveFilePicker" in window){
-
-      const handle =
-        await window.showSaveFilePicker({
-
-          suggestedName:file.name,
-
-          types:[{
-            description:"JSON File",
-            accept:{
-              "application/json":[".json"]
-            }
-          }]
-
-        });
-
-      const writable =
-        await handle.createWritable();
-
-      await writable.write(file);
-
-      await writable.close();
-
-      status.style.display = "block";
-      status.textContent =
-        "✅ فایل JSON ذخیره شد.";
-
-      return;
-    }
-
-    /*
-      اگر محیط File Picker ندارد،
-      از Share استفاده می‌کنیم.
-    */
-
-    if(
-      navigator.share &&
-      (!navigator.canShare ||
-       navigator.canShare({files:[file]}))
-    ){
-
-      await navigator.share({
-        title:file.name,
-        files:[file]
-      });
-
-      status.style.display = "block";
-      status.textContent =
-        "✅ فایل JSON ارسال شد.";
-
-      return;
-    }
-
-    status.style.display = "block";
-    status.textContent =
-      "⚠️ این محیط امکان ذخیره مستقیم فایل را ندارد. صفحه را در Chrome باز کن.";
-
-  }catch(err){
-
-    if(err.name === "AbortError"){
-      status.textContent =
-        "ذخیره لغو شد.";
-      return;
-    }
-
-    console.error(err);
-
-    status.style.display = "block";
-    status.textContent =
-      "❌ ذخیره فایل انجام نشد.";
-
-  }
-
-};
-
-
-/* =========================
-   JSON → IMAGE
-========================= */
-
-const jsonInput =
-  document.getElementById("jsonInput");
-
-jsonInput.addEventListener("change", async () => {
-
-  const file = jsonInput.files[0];
-
-  if(!file) return;
-
-  const status =
-    document.getElementById("jsonStatus");
-
-  try{
-
-    status.style.display = "block";
-    status.textContent =
-      "⏳ در حال خواندن JSON...";
-
-    const text =
-      await file.text();
-
-    const json =
-      JSON.parse(text);
-
-    const data =
-      json.data ||
-      json.image ||
-      json.base64;
-
-    if(
-      typeof data !== "string" ||
-      !data.startsWith("data:image/")
-    ){
-
-      throw new Error(
-        "اطلاعات تصویر داخل JSON پیدا نشد."
-      );
-
-    }
-
-    currentImageBlob =
-      dataURLToBlob(data);
-
-    currentImageName =
-      json.name ||
-      "restored-image.png";
-
-    const img =
-      document.getElementById("jsonImage");
-
-    img.src = data;
-
-    img.onload = () => {
-
-      document.getElementById(
-        "jsonImageName"
-      ).textContent =
-        currentImageName;
-
-      document.getElementById(
-        "jsonImageType"
-      ).textContent =
-        json.type || currentImageBlob.type;
-
-      document.getElementById(
-        "jsonImageDimensions"
-      ).textContent =
-        (json.width || img.naturalWidth)
-        + " × " +
-        (json.height || img.naturalHeight);
-
-      document.getElementById(
-        "jsonImageSize"
-      ).textContent =
-        formatBytes(currentImageBlob.size);
-
-      document.getElementById(
-        "jsonPreview"
-      ).style.display = "block";
-
-      status.textContent =
-        "✅ تصویر با موفقیت استخراج شد.";
-
-    };
-
-  }catch(err){
-
-    console.error(err);
-
-    status.style.display = "block";
-
-    status.textContent =
-      "❌ JSON نامعتبر است یا تصویر داخل آن وجود ندارد.";
-
-  }
-
-});
-
-
-function dataURLToBlob(dataURL){
-
-  const parts =
-    dataURL.split(",");
-
-  const mime =
-    parts[0]
-      .match(/:(.*?);/)[1];
-
-  const binary =
-    atob(parts[1]);
-
-  const bytes =
-    new Uint8Array(binary.length);
-
-  for(let i=0;i<binary.length;i++){
-    bytes[i] = binary.charCodeAt(i);
-  }
-
-  return new Blob(
-    [bytes],
-    {type:mime}
-  );
-
-}
-
-
-/* =========================
-   SHARE IMAGE
-========================= */
-
-document.getElementById("shareImage").onclick =
-async () => {
-
-  if(!currentImageBlob) return;
-
-  const status =
-    document.getElementById("jsonStatus");
-
-  try{
-
-    const file =
-      new File(
-        [currentImageBlob],
-        currentImageName,
-        {
-          type:currentImageBlob.type
-        }
-      );
-
-    if(
-      navigator.share &&
-      (!navigator.canShare ||
-       navigator.canShare({files:[file]}))
-    ){
-
-      await navigator.share({
-        title:currentImageName,
-        files:[file]
-      });
-
-      status.textContent =
-        "✅ تصویر برای اشتراک‌گذاری ارسال شد.";
-
-      return;
-    }
-
-    status.textContent =
-      "⚠️ اشتراک‌گذاری فایل در این محیط پشتیبانی نمی‌شود.";
-
-  }catch(err){
-
-    if(err.name === "AbortError"){
-      status.textContent =
-        "اشتراک‌گذاری لغو شد.";
-      return;
-    }
-
-    status.textContent =
-      "❌ اشتراک‌گذاری تصویر انجام نشد.";
-
-  }
-
-};
-
-
-/* =========================
-   SAVE IMAGE
-========================= */
-
-document.getElementById("saveImage").onclick =
-async () => {
-
-  if(!currentImageBlob) return;
-
-  const status =
-    document.getElementById("jsonStatus");
-
-  const file =
-    new File(
-      [currentImageBlob],
-      currentImageName,
-      {
-        type:currentImageBlob.type
+    function revoke(url){
+      if(url && String(url).startsWith("blob:")){
+        try{ URL.revokeObjectURL(url); }catch(_){}
       }
-    );
-
-  try{
-
-    if("showSaveFilePicker" in window){
-
-      const extension =
-        getExtension(currentImageName);
-
-      const handle =
-        await window.showSaveFilePicker({
-
-          suggestedName:currentImageName,
-
-          types:[{
-            description:"Image",
-            accept:{
-              [currentImageBlob.type]:[extension]
-            }
-          }]
-
-        });
-
-      const writable =
-        await handle.createWritable();
-
-      await writable.write(file);
-
-      await writable.close();
-
-      status.textContent =
-        "✅ تصویر ذخیره شد.";
-
-      return;
+    }
+    function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+    function gcd(a,b){ return b?gcd(b,a%b):a; }
+    function aspect(w,h){
+      if(!w||!h) return "—";
+      const g=gcd(w,h);
+      return (w/g)+":"+(h/g);
     }
 
-    if(
-      navigator.share &&
-      (!navigator.canShare ||
-       navigator.canShare({files:[file]}))
-    ){
+    function toast(msg, type="info", ms=3600){
+      const c=$("#toast-container");
+      const el=document.createElement("div");
+      el.className="toast "+type;
+      el.setAttribute("role","status");
+      const icons={success:"✓",error:"✕",warning:"⚠",info:"ℹ"};
+      el.innerHTML='<span class="toast-icon"></span><span class="toast-msg"></span>';
+      el.querySelector(".toast-icon").textContent=icons[type]||"ℹ";
+      el.querySelector(".toast-msg").textContent=msg;
+      c.appendChild(el);
+      setTimeout(()=>{
+        el.style.opacity="0";
+        el.style.transform="translateY(8px)";
+        el.style.transition="all 0.22s ease";
+        setTimeout(()=>el.remove(),240);
+      },ms);
+    }
 
-      await navigator.share({
-        title:currentImageName,
-        files:[file]
+    function applyTheme(t){
+      S.theme=t;
+      document.documentElement.setAttribute("data-theme", t==="light"?"light":"dark");
+      const meta=document.querySelector('meta[name="theme-color"]');
+      if(meta) meta.setAttribute("content", t==="light"?"#f4f4f5":"#0a0a0b");
+      try{ localStorage.setItem("pv-theme",t); }catch(_){}
+    }
+
+    function loadSettings(){
+      try{
+        const t=localStorage.getItem("pv-theme");
+        if(t==="light"||t==="dark") S.theme=t;
+        S.reducedMotion=localStorage.getItem("pv-motion")==="1";
+        S.sizeWarn=localStorage.getItem("pv-sizewarn")!=="0";
+        S.aiEnabled=localStorage.getItem("pv-ai")==="1";
+        S.apiKey=localStorage.getItem("pv-apikey")||"";
+      }catch(_){}
+      applyTheme(S.theme);
+      document.body.classList.toggle("reduced-motion", S.reducedMotion);
+      $("#setting-dark").checked=S.theme==="dark";
+      $("#setting-motion").checked=S.reducedMotion;
+      $("#setting-size-warn").checked=S.sizeWarn;
+      $("#setting-ai").checked=S.aiEnabled;
+      $("#setting-api-key").value=S.apiKey;
+      $("#ai-key-wrap").style.display=S.aiEnabled?"block":"none";
+      updateAiUI();
+      renderRecent();
+    }
+    function saveLS(k,v){ try{ localStorage.setItem(k,v); }catch(_){} }
+
+    function getRecent(){
+      try{ return JSON.parse(localStorage.getItem("pv-recent")||"[]"); }catch(_){ return []; }
+    }
+    function pushRecent(meta){
+      try{
+        let list=getRecent().filter(x=>x.name!==meta.name);
+        list.unshift({
+          name: meta.name, type: meta.type, size: meta.size,
+          width: meta.width, height: meta.height, ts: Date.now()
+        });
+        list=list.slice(0,12);
+        localStorage.setItem("pv-recent", JSON.stringify(list));
+        renderRecent();
+      }catch(_){}
+    }
+    function renderRecent(){
+      const box=$("#recent-list");
+      box.innerHTML="";
+      const list=getRecent();
+      if(!list.length){
+        const d=document.createElement("div");
+        d.className="setting-desc";
+        d.textContent="No recent files";
+        box.appendChild(d);
+        return;
+      }
+      list.forEach(r=>{
+        const el=document.createElement("div");
+        el.className="recent-item";
+        const n=document.createElement("span");
+        n.className="rname";
+        n.textContent=r.name||"—";
+        const m=document.createElement("span");
+        m.style.color="var(--muted)";
+        m.style.fontSize="0.75rem";
+        m.textContent=fmtBytes(r.size);
+        el.appendChild(n);
+        el.appendChild(m);
+        box.appendChild(el);
+      });
+    }
+
+    function runDiag(){
+      const list=$("#diag-list");
+      list.innerHTML="";
+      const ua=navigator.userAgent||"";
+      const isMobile=/Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+      const checks=[
+        {name:"Browser", val:(()=>{ try{ return (navigator.userAgentData&&navigator.userAgentData.brands)?navigator.userAgentData.brands.map(b=>b.brand).join(", "):ua.slice(0,42); }catch(_){ return "Unknown"; }})()},
+        {name:"Platform", val:navigator.platform||"—"},
+        {name:"Device", val:isMobile?"Mobile":"Desktop"},
+        {name:"Web Share", ok:!!navigator.share},
+        {name:"File Sharing", ok:(()=>{ try{ return !!(navigator.canShare&&navigator.canShare({files:[new File([""],"t.txt",{type:"text/plain"})]})); }catch(_){ return false; }})()},
+        {name:"File Picker", ok:true},
+        {name:"Save Picker", ok:!!window.showSaveFilePicker},
+        {name:"Clipboard", ok:!!(navigator.clipboard&&(navigator.clipboard.writeText||navigator.clipboard.write))},
+        {name:"Camera", ok:!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)},
+        {name:"Drag & Drop", ok:"ondrop" in window},
+        {name:"Web Worker", ok:typeof Worker!=="undefined"},
+        {name:"Secure Context", ok:window.isSecureContext===true},
+        {name:"localStorage", ok:(()=>{ try{ localStorage.setItem("_pv","1");localStorage.removeItem("_pv");return true; }catch(_){ return false; }})()}
+      ];
+      checks.forEach(c=>{
+        const d=document.createElement("div");
+        d.className="diag-item";
+        const left=document.createElement("span");
+        left.textContent=c.name;
+        const right=document.createElement("span");
+        if(c.ok!==undefined){
+          right.className=c.ok?"diag-ok":"diag-no";
+          right.textContent=c.ok?"✓ Supported":"✕ Unsupported";
+        } else {
+          right.style.color="var(--text2)";
+          right.style.fontSize="0.78rem";
+          right.textContent=c.val;
+        }
+        d.appendChild(left);
+        d.appendChild(right);
+        list.appendChild(d);
+      });
+    }
+
+    function loadImageFromFile(file){
+      return new Promise((resolve,reject)=>{
+        if(!file){ reject(new Error("No file")); return; }
+        if(!file.type || !file.type.startsWith("image/")){
+          const n=(file.name||"").toLowerCase();
+          if(!/\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(n) && file.type!==""){
+            reject(new Error("Not an image"));
+            return;
+          }
+        }
+        const reader=new FileReader();
+        reader.onerror=()=>reject(new Error("Read failed"));
+        reader.onload=()=>{
+          const dataUrl=reader.result;
+          if(typeof dataUrl!=="string" || !dataUrl.startsWith("data:")){
+            reject(new Error("Invalid data"));
+            return;
+          }
+          const img=new Image();
+          img.onload=()=>{
+            resolve({
+              dataUrl,
+              width: img.naturalWidth,
+              height: img.naturalHeight,
+              type: file.type || (dataUrl.match(/^data:(image\/[^;]+)/)||[])[1] || "image/png"
+            });
+          };
+          img.onerror=()=>reject(new Error("Invalid image"));
+          img.src=dataUrl;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function applyCanvasTransform(dataUrl, transforms, quality){
+      return new Promise((resolve,reject)=>{
+        const img=new Image();
+        img.onload=()=>{
+          let w=img.naturalWidth, h=img.naturalHeight;
+          const rot=((transforms.rotate%360)+360)%360;
+          const swap=rot===90||rot===270;
+          const cw=swap?h:w, ch=swap?w:h;
+          const canvas=document.createElement("canvas");
+          canvas.width=cw; canvas.height=ch;
+          const ctx=canvas.getContext("2d");
+          ctx.translate(cw/2, ch/2);
+          ctx.rotate(rot*Math.PI/180);
+          ctx.scale(transforms.flipH, transforms.flipV);
+          ctx.drawImage(img, -w/2, -h/2);
+          const q=(quality!=null && quality<100)? quality/100 : 0.92;
+          const mime= quality!=null && quality<100 ? "image/jpeg" : (transforms.type||"image/png");
+          const out=canvas.toDataURL(mime, q);
+          resolve({ dataUrl: out, width: cw, height: ch, type: mime, compressed: quality!=null && quality<100 });
+        };
+        img.onerror=()=>reject(new Error("Transform failed"));
+        img.src=dataUrl;
+      });
+    }
+
+    async function processFiles(fileList){
+      const files=[...fileList].filter(f=>f);
+      if(!files.length){ toast("No file selected","warning"); return; }
+      const maxWarn=8*1024*1024;
+      for(const file of files){
+        if(S.sizeWarn && file.size>maxWarn){
+          toast("Large file: "+(file.name||"")+" ("+fmtBytes(file.size)+")","warning",4000);
+        }
+        const id=uid();
+        const item={
+          id, file, dataUrl:null, meta:null, json:null, status:"wait",
+          transforms:{rotate:0,flipH:1,flipV:1}, quality:100
+        };
+        S.items.push(item);
+        renderBatch();
+        try{
+          const loaded=await loadImageFromFile(file);
+          item.dataUrl=loaded.dataUrl;
+          item.meta={
+            name: file.name||"image.png",
+            type: loaded.type,
+            size: file.size,
+            width: loaded.width,
+            height: loaded.height,
+            lastModified: file.lastModified||null
+          };
+          item.status="ok";
+          if(!S.activeId) S.activeId=id;
+          setActive(id);
+        }catch(e){
+          item.status="err";
+          toast((file.name||"File")+": "+(e.message||"Failed"),"error");
+        }
+        renderBatch();
+      }
+    }
+
+    function renderBatch(){
+      const box=$("#batch-list");
+      if(S.items.length<=1){
+        box.style.display="none";
+        box.innerHTML="";
+        return;
+      }
+      box.style.display="flex";
+      box.innerHTML="";
+      S.items.forEach(it=>{
+        const el=document.createElement("div");
+        el.className="batch-item";
+        el.dataset.id=it.id;
+        if(it.id===S.activeId) el.style.borderColor="rgba(16,185,129,0.45)";
+        const thumb=document.createElement("img");
+        thumb.className="thumb";
+        thumb.alt="";
+        if(it.dataUrl) thumb.src=it.dataUrl;
+        const info=document.createElement("div");
+        info.className="info";
+        const name=document.createElement("div");
+        name.className="name";
+        name.textContent=it.meta?it.meta.name:(it.file&&it.file.name)||"—";
+        const meta=document.createElement("div");
+        meta.className="meta";
+        meta.textContent=it.meta?fmtBytes(it.meta.size):"…";
+        info.appendChild(name); info.appendChild(meta);
+        const st=document.createElement("span");
+        st.className="status "+(it.status==="ok"?"ok":it.status==="err"?"err":"wait");
+        st.textContent=it.status==="ok"?"✓":it.status==="err"?"✕":"…";
+        const rm=document.createElement("button");
+        rm.className="rm";
+        rm.type="button";
+        rm.setAttribute("aria-label","Remove");
+        rm.textContent="×";
+        rm.addEventListener("click",(e)=>{ e.stopPropagation(); removeItem(it.id); });
+        el.appendChild(thumb); el.appendChild(info); el.appendChild(st); el.appendChild(rm);
+        el.addEventListener("click",()=>{ if(it.status==="ok") setActive(it.id); });
+        box.appendChild(el);
+      });
+    }
+
+    function removeItem(id){
+      S.items=S.items.filter(x=>x.id!==id);
+      if(S.activeId===id){
+        S.activeId=S.items.find(x=>x.status==="ok")?.id||null;
+        if(S.activeId) setActive(S.activeId);
+        else clearPreview();
+      }
+      renderBatch();
+      updateEncodeButtons();
+    }
+
+    function setActive(id){
+      const it=S.items.find(x=>x.id===id);
+      if(!it||!it.meta) return;
+      S.activeId=id;
+      S.scale=1; S.rotate=it.transforms.rotate; S.flipH=it.transforms.flipH; S.flipV=it.transforms.flipV;
+      const img=$("#preview-img");
+      img.src=it.dataUrl;
+      applyPreviewTransform();
+      renderMeta(it);
+      $("#preview-wrap").classList.add("visible");
+      $$(".q-btn").forEach(b=>{
+        b.classList.toggle("active", Number(b.dataset.q)===it.quality);
+      });
+      updateEncodeButtons();
+      renderBatch();
+    }
+
+    function renderMeta(it){
+      const m=it.meta;
+      const grid=$("#meta-grid");
+      grid.innerHTML="";
+      const rows=[
+        {label:"Filename", value:m.name},
+        {label:"MIME", value:m.type},
+        {label:"Format", value:(m.type.split("/")[1]||"?").toUpperCase()},
+        {label:"Size", value:fmtBytes(m.size)},
+        {label:"Width", value:m.width+" px"},
+        {label:"Height", value:m.height+" px"},
+        {label:"Aspect", value:aspect(m.width,m.height)},
+        {label:"Modified", value:m.lastModified? new Date(m.lastModified).toLocaleString():"—"}
+      ];
+      rows.forEach(r=>{
+        const d=document.createElement("div");
+        d.className="meta-item";
+        const l=document.createElement("div"); l.className="label"; l.textContent=r.label;
+        const v=document.createElement("div"); v.className="value"; v.textContent=r.value;
+        d.appendChild(l); d.appendChild(v);
+        grid.appendChild(d);
+      });
+      const estJson=Math.round(m.size*1.37);
+      const overhead=m.size? (((estJson-m.size)/m.size)*100).toFixed(1) : "—";
+      const bar=$("#size-bar");
+      bar.innerHTML="";
+      if(it.json){
+        const real=new Blob([it.json]).size;
+        ["Original "+fmtBytes(m.size), "JSON "+fmtBytes(real),
+         "Overhead +"+(((real-m.size)/m.size)*100).toFixed(1)+"%",
+         "Base64 ~"+fmtBytes(it.dataUrl?it.dataUrl.length:0)].forEach((t,i)=>{
+          if(i){ const s=document.createElement("span"); s.className="sep"; s.textContent="·"; bar.appendChild(s); }
+          const sp=document.createElement("span"); sp.textContent=t; bar.appendChild(sp);
+        });
+      } else {
+        ["Original "+fmtBytes(m.size), "PixVault ~"+fmtBytes(estJson), "Overhead +"+overhead+"%"].forEach((t,i)=>{
+          if(i){ const s=document.createElement("span"); s.className="sep"; s.textContent="·"; bar.appendChild(s); }
+          const sp=document.createElement("span"); sp.textContent=t; bar.appendChild(sp);
+        });
+      }
+    }
+
+    function applyPreviewTransform(){
+      const img=$("#preview-img");
+      img.style.transform=`scale(${S.scale * S.flipH}, ${S.scale * S.flipV}) rotate(${S.rotate}deg)`;
+    }
+
+    function clearPreview(){
+      S.activeId=null;
+      $("#preview-wrap").classList.remove("visible");
+      $("#preview-img").removeAttribute("src");
+      $("#meta-grid").innerHTML="";
+      $("#size-bar").innerHTML="";
+      updateEncodeButtons();
+    }
+
+    function updateEncodeButtons(){
+      const has=S.items.some(x=>x.status==="ok");
+      const active=S.items.find(x=>x.id===S.activeId);
+      $("#btn-encode").disabled=!has;
+      $("#btn-share-json").disabled=!(active&&active.json);
+      $("#btn-save-json").disabled=!(active&&active.json);
+      $("#btn-copy-json").disabled=!(active&&active.json);
+    }
+
+    async function encodeActive(){
+      const it=S.items.find(x=>x.id===S.activeId);
+      if(!it||!it.dataUrl){ toast("No image selected","warning"); return; }
+      $("#btn-encode").disabled=true;
+      $("#btn-encode").innerHTML='<span class="spinner"></span> Encoding…';
+      try{
+        let dataUrl=it.dataUrl;
+        let width=it.meta.width, height=it.meta.height, type=it.meta.type;
+        let compressed=false;
+        const needTransform=it.transforms.rotate!==0||it.transforms.flipH!==1||it.transforms.flipV!==1||it.quality<100;
+        if(needTransform){
+          const out=await applyCanvasTransform(it.dataUrl, {
+            rotate: it.transforms.rotate,
+            flipH: it.transforms.flipH,
+            flipV: it.transforms.flipV,
+            type: it.meta.type
+          }, it.quality);
+          dataUrl=out.dataUrl;
+          width=out.width; height=out.height; type=out.type;
+          compressed=!!out.compressed;
+        }
+        const payload={
+          format:"PixVault",
+          version:1,
+          name: it.meta.name,
+          type: type,
+          size: it.meta.size,
+          width, height,
+          encoding:"base64-data-url",
+          data: dataUrl,
+          created: new Date().toISOString()
+        };
+        if(compressed){
+          payload.compressed=true;
+          payload.originalSize=it.meta.size;
+          payload.quality=it.quality;
+        }
+        it.json=JSON.stringify(payload);
+        renderMeta(it);
+        pushRecent(it.meta);
+        updateEncodeButtons();
+        toast("PixVault JSON ready","success");
+      }catch(e){
+        toast("Encode failed: "+(e.message||"error"),"error");
+      }
+      $("#btn-encode").disabled=false;
+      $("#btn-encode").textContent="Create PixVault JSON";
+    }
+
+    function validatePixVault(str){
+      let obj;
+      try{ obj=JSON.parse(str); }catch(_){ toast("Invalid JSON","error"); return null; }
+      if(!obj||typeof obj!=="object"){ toast("Invalid PixVault file","error"); return null; }
+      if(obj.format!=="PixVault"){ toast("Not a PixVault file","error"); return null; }
+      if(obj.version!==1 && obj.version!=="1"){ toast("Unsupported version: "+(obj.version||"?"),"error"); return null; }
+      if(!obj.data||typeof obj.data!=="string"){ toast("Missing image data","error"); return null; }
+      if(!obj.data.startsWith("data:image/")){ toast("Invalid Base64 / data URL","error"); return null; }
+      const mime=obj.type || (obj.data.match(/^data:(image\/[^;]+)/)||[])[1] || "image/png";
+      return {obj, mime};
+    }
+
+    function decodeJson(str){
+      const res=validatePixVault(str);
+      if(!res) return;
+      const {obj,mime}=res;
+      fetch(obj.data).then(r=>r.blob()).then(blob=>{
+        if(!blob||blob.size===0){ toast("Invalid image data","error"); return; }
+        revoke(S.restoredUrl);
+        S.restoredBlob=blob;
+        S.restoredUrl=URL.createObjectURL(blob);
+        S.restoredMeta={
+          name: obj.name||"restored.png",
+          type: mime,
+          size: blob.size,
+          width: obj.width||0,
+          height: obj.height||0
+        };
+        $("#result-img").src=S.restoredUrl;
+        const grid=$("#result-meta");
+        grid.innerHTML="";
+        [
+          {label:"Filename",value:S.restoredMeta.name},
+          {label:"MIME",value:mime},
+          {label:"Format",value:(mime.split("/")[1]||"?").toUpperCase()},
+          {label:"Size",value:fmtBytes(blob.size)},
+          {label:"Dimensions",value:(obj.width&&obj.height)?obj.width+" × "+obj.height:"—"},
+          {label:"Aspect",value:aspect(obj.width,obj.height)}
+        ].forEach(r=>{
+          const d=document.createElement("div");
+          d.className="meta-item";
+          const l=document.createElement("div"); l.className="label"; l.textContent=r.label;
+          const v=document.createElement("div"); v.className="value"; v.textContent=r.value;
+          d.appendChild(l); d.appendChild(v);
+          grid.appendChild(d);
+        });
+        $("#result-card").style.display="block";
+        pushRecent(S.restoredMeta);
+        toast("Image restored","success");
+      }).catch(()=>toast("Failed to decode image","error"));
+    }
+
+    async function shareBlob(blob, filename, mime){
+      const file=new File([blob], filename, {type:mime});
+      try{
+        if(navigator.canShare && navigator.canShare({files:[file]})){
+          await navigator.share({files:[file], title:"PixVault", text:filename});
+          toast("Shared","success");
+          return true;
+        }
+      }catch(e){
+        if(e.name!=="AbortError") toast("Share failed","warning");
+        return false;
+      }
+      if(navigator.share){
+        try{
+          await navigator.share({title:"PixVault", text:"Open the saved file in PixVault."});
+          return true;
+        }catch(_){}
+      }
+      toast("Share unavailable — use Save","warning");
+      return false;
+    }
+
+    async function saveBlob(blob, filename, mime){
+      if(window.showSaveFilePicker){
+        try{
+          const ext=filename.includes(".")?("."+filename.split(".").pop()):(mime.includes("json")?".json":".png");
+          const handle=await window.showSaveFilePicker({
+            suggestedName: filename,
+            types:[{description: mime.includes("json")?"JSON":"Image", accept:{[mime]:[ext]}}]
+          });
+          const w=await handle.createWritable();
+          await w.write(blob);
+          await w.close();
+          toast("Saved","success");
+          return true;
+        }catch(e){
+          if(e.name==="AbortError") return false;
+        }
+      }
+      try{
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement("a");
+        a.href=url;
+        a.download=filename;
+        a.rel="noopener";
+        a.style.display="none";
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(()=>{ try{document.body.removeChild(a);}catch(_){}
+          URL.revokeObjectURL(url); },1200);
+        toast("Download started","success");
+        return true;
+      }catch(_){
+        toast("Save unavailable","error");
+        return false;
+      }
+    }
+
+    function updateAiUI(){
+      const show=S.aiEnabled && S.apiKey;
+      $("#ai-section-img").style.display=show?"block":"none";
+      $("#ai-section-json").style.display=show?"block":"none";
+    }
+
+    async function callGrok(prompt, imageDataUrl){
+      if(!S.apiKey){ toast("Add Grok API key in Settings","warning"); return null; }
+      toast("Sending to Grok (with your consent)…","info",2200);
+      const body={
+        model:"grok-2-vision-1212",
+        messages:[{
+          role:"user",
+          content:[
+            {type:"text", text:prompt},
+            ...(imageDataUrl?[{type:"image_url", image_url:{url:imageDataUrl}}]:[])
+          ]
+        }],
+        max_tokens:400
+      };
+      try{
+        const res=await fetch("https://api.x.ai/v1/chat/completions",{
+          method:"POST",
+          headers:{"Content-Type":"application/json","Authorization":"Bearer "+S.apiKey},
+          body:JSON.stringify(body)
+        });
+        if(!res.ok) throw new Error((await res.text())||res.statusText);
+        const data=await res.json();
+        return data.choices?.[0]?.message?.content||"No response";
+      }catch(e){
+        toast("AI failed: "+(e.message||"network"),"error");
+        return null;
+      }
+    }
+
+    function setupDrop(zone, handler){
+      ["dragenter","dragover"].forEach(ev=>zone.addEventListener(ev,e=>{ e.preventDefault(); zone.classList.add("dragover"); }));
+      ["dragleave","drop"].forEach(ev=>zone.addEventListener(ev,e=>{ e.preventDefault(); zone.classList.remove("dragover"); }));
+      zone.addEventListener("drop",e=>{
+        const files=e.dataTransfer?.files;
+        if(files?.length) handler(files);
+      });
+    }
+
+    function bind(){
+      $$(".tab").forEach(tab=>{
+        tab.addEventListener("click",()=>{
+          $$(".tab").forEach(t=>{ t.classList.remove("active"); t.setAttribute("aria-selected","false"); });
+          tab.classList.add("active"); tab.setAttribute("aria-selected","true");
+          $$(".panel").forEach(p=>p.classList.remove("active"));
+          $("#panel-"+tab.dataset.tab).classList.add("active");
+        });
       });
 
-      status.textContent =
-        "✅ تصویر ارسال شد.";
+      $("#btn-theme").addEventListener("click",()=>{
+        applyTheme(S.theme==="dark"?"light":"dark");
+        $("#setting-dark").checked=S.theme==="dark";
+      });
 
-      return;
+      $("#btn-settings").addEventListener("click",()=>{ runDiag(); renderRecent(); $("#settings-overlay").classList.add("visible"); });
+      $("#settings-close").addEventListener("click",()=>$("#settings-overlay").classList.remove("visible"));
+      $("#settings-overlay").addEventListener("click",e=>{ if(e.target===$("#settings-overlay")) $("#settings-overlay").classList.remove("visible"); });
+      $("#btn-about").addEventListener("click",()=>$("#about-overlay").classList.add("visible"));
+      $("#about-close").addEventListener("click",()=>$("#about-overlay").classList.remove("visible"));
+      $("#about-overlay").addEventListener("click",e=>{ if(e.target===$("#about-overlay")) $("#about-overlay").classList.remove("visible"); });
+
+      $("#setting-dark").addEventListener("change",e=>applyTheme(e.target.checked?"dark":"light"));
+      $("#setting-motion").addEventListener("change",e=>{
+        S.reducedMotion=e.target.checked;
+        document.body.classList.toggle("reduced-motion",S.reducedMotion);
+        saveLS("pv-motion",S.reducedMotion?"1":"0");
+      });
+      $("#setting-size-warn").addEventListener("change",e=>{
+        S.sizeWarn=e.target.checked;
+        saveLS("pv-sizewarn",S.sizeWarn?"1":"0");
+      });
+      $("#setting-ai").addEventListener("change",e=>{
+        S.aiEnabled=e.target.checked;
+        saveLS("pv-ai",S.aiEnabled?"1":"0");
+        $("#ai-key-wrap").style.display=S.aiEnabled?"block":"none";
+        updateAiUI();
+      });
+      $("#btn-save-key").addEventListener("click",()=>{
+        S.apiKey=$("#setting-api-key").value.trim();
+        saveLS("pv-apikey",S.apiKey);
+        updateAiUI();
+        toast(S.apiKey?"API key saved locally":"API key cleared","success");
+      });
+      $("#btn-clear-history").addEventListener("click",()=>{
+        try{ localStorage.removeItem("pv-recent"); }catch(_){}
+        renderRecent();
+        toast("History cleared","success");
+      });
+
+      // CRITICAL FIX: separate Gallery (no capture) vs Camera (capture)
+      $("#btn-gallery").addEventListener("click",()=>$("#input-gallery").click());
+      $("#btn-camera").addEventListener("click",()=>$("#input-camera").click());
+      $("#btn-files").addEventListener("click",()=>$("#input-files").click());
+
+      $("#input-gallery").addEventListener("change",()=>{
+        if($("#input-gallery").files?.length) processFiles($("#input-gallery").files);
+        $("#input-gallery").value="";
+      });
+      $("#input-camera").addEventListener("change",()=>{
+        if($("#input-camera").files?.length) processFiles($("#input-camera").files);
+        $("#input-camera").value="";
+      });
+      $("#input-files").addEventListener("change",()=>{
+        if($("#input-files").files?.length) processFiles($("#input-files").files);
+        $("#input-files").value="";
+      });
+
+      $("#btn-paste").addEventListener("click", async ()=>{
+        try{
+          if(!navigator.clipboard||!navigator.clipboard.read){
+            toast("Clipboard image not supported — try Ctrl+V / long-press paste","warning");
+            return;
+          }
+          const items=await navigator.clipboard.read();
+          for(const item of items){
+            const type=item.types.find(t=>t.startsWith("image/"));
+            if(type){
+              const blob=await item.getType(type);
+              const file=new File([blob],"pasted."+(type.split("/")[1]||"png"),{type});
+              processFiles([file]);
+              return;
+            }
+          }
+          toast("No image in clipboard","warning");
+        }catch(_){
+          toast("Clipboard access denied or unavailable","warning");
+        }
+      });
+
+      document.addEventListener("paste",e=>{
+        if(!$("#panel-img2json").classList.contains("active")) return;
+        const items=e.clipboardData?.items;
+        if(!items) return;
+        for(const item of items){
+          if(item.type.startsWith("image/")){
+            e.preventDefault();
+            const f=item.getAsFile();
+            if(f) processFiles([f]);
+            break;
+          }
+        }
+      });
+
+      setupDrop($("#drop-hint"), processFiles);
+      setupDrop($("#panel-img2json"), files=>{
+        const imgs=[...files].filter(f=>f.type.startsWith("image/")||/\.(png|jpe?g|webp|gif|bmp)$/i.test(f.name||""));
+        if(imgs.length) processFiles(imgs);
+      });
+
+      $$(".tool-btn").forEach(btn=>{
+        btn.addEventListener("click",()=>{
+          const t=btn.dataset.tool;
+          const it=S.items.find(x=>x.id===S.activeId);
+          if(!it) return;
+          if(t==="rotate"){ it.transforms.rotate=(it.transforms.rotate+90)%360; S.rotate=it.transforms.rotate; }
+          else if(t==="flipH"){ it.transforms.flipH*=-1; S.flipH=it.transforms.flipH; }
+          else if(t==="flipV"){ it.transforms.flipV*=-1; S.flipV=it.transforms.flipV; }
+          else if(t==="zoomIn"){ S.scale=Math.min(4, S.scale+0.25); }
+          else if(t==="zoomOut"){ S.scale=Math.max(0.25, S.scale-0.25); }
+          else if(t==="fit"||t==="actual"){ S.scale=1; }
+          else if(t==="reset"){
+            it.transforms={rotate:0,flipH:1,flipV:1};
+            S.rotate=0; S.flipH=1; S.flipV=1; S.scale=1;
+          }
+          else if(t==="fs"){
+            $("#fs-img").src=it.dataUrl;
+            $("#fs-overlay").classList.add("visible");
+          }
+          applyPreviewTransform();
+          it.json=null;
+          updateEncodeButtons();
+        });
+      });
+      $("#fs-close").addEventListener("click",()=>$("#fs-overlay").classList.remove("visible"));
+      $("#fs-overlay").addEventListener("click",e=>{ if(e.target===$("#fs-overlay")) $("#fs-overlay").classList.remove("visible"); });
+
+      $$(".q-btn").forEach(b=>{
+        b.addEventListener("click",()=>{
+          const it=S.items.find(x=>x.id===S.activeId);
+          if(!it) return;
+          it.quality=Number(b.dataset.q);
+          $$(".q-btn").forEach(x=>x.classList.toggle("active",x===b));
+          it.json=null;
+          updateEncodeButtons();
+          if(it.quality<100) toast("Compression applies on encode (original kept until then)","info",2800);
+        });
+      });
+
+      $("#btn-encode").addEventListener("click", encodeActive);
+      $("#btn-share-json").addEventListener("click", async ()=>{
+        const it=S.items.find(x=>x.id===S.activeId);
+        if(!it?.json) return;
+        const blob=new Blob([it.json],{type:"application/json"});
+        const name=(it.meta.name||"image").replace(/\.[^.]+$/,"")+".pixvault.json";
+        await shareBlob(blob, name, "application/json");
+      });
+      $("#btn-save-json").addEventListener("click", async ()=>{
+        const it=S.items.find(x=>x.id===S.activeId);
+        if(!it?.json) return;
+        const blob=new Blob([it.json],{type:"application/json"});
+        const name=(it.meta.name||"image").replace(/\.[^.]+$/,"")+".pixvault.json";
+        await saveBlob(blob, name, "application/json");
+      });
+      $("#btn-copy-json").addEventListener("click", async ()=>{
+        const it=S.items.find(x=>x.id===S.activeId);
+        if(!it?.json) return;
+        try{
+          if(navigator.clipboard?.writeText){
+            await navigator.clipboard.writeText(it.json);
+            toast("JSON copied","success");
+          } else toast("Clipboard unavailable","warning");
+        }catch(_){ toast("Copy failed","error"); }
+      });
+      $("#btn-clear-img").addEventListener("click",()=>{
+        S.items=[]; S.activeId=null;
+        clearPreview();
+        renderBatch();
+        $("#input-gallery").value="";
+        $("#input-camera").value="";
+        $("#input-files").value="";
+      });
+
+      $("#btn-json-file").addEventListener("click",()=>$("#input-json").click());
+      $("#input-json").addEventListener("change",()=>{
+        const f=$("#input-json").files?.[0];
+        if(!f) return;
+        const reader=new FileReader();
+        reader.onload=()=>{
+          $("#json-textarea").value=reader.result;
+          decodeJson(reader.result);
+        };
+        reader.onerror=()=>toast("Failed to read JSON","error");
+        reader.readAsText(f);
+        $("#input-json").value="";
+      });
+      $("#btn-json-paste").addEventListener("click", async ()=>{
+        try{
+          if(navigator.clipboard?.readText){
+            const t=await navigator.clipboard.readText();
+            if(t){ $("#json-textarea").value=t; decodeJson(t); }
+            else toast("Clipboard empty","warning");
+          } else toast("Clipboard not available","warning");
+        }catch(_){ toast("Clipboard access denied","warning"); }
+      });
+      setupDrop($("#drop-hint-json"), files=>{
+        const f=[...files].find(x=>/\.json$/i.test(x.name||"")||x.type.includes("json"));
+        if(!f){ toast("Drop a .json file","warning"); return; }
+        const reader=new FileReader();
+        reader.onload=()=>{ $("#json-textarea").value=reader.result; decodeJson(reader.result); };
+        reader.readAsText(f);
+      });
+      $("#btn-decode").addEventListener("click",()=>{
+        const t=$("#json-textarea").value.trim();
+        if(!t){ toast("Paste or load a PixVault JSON first","warning"); return; }
+        decodeJson(t);
+      });
+      $("#btn-clear-json").addEventListener("click",()=>{
+        revoke(S.restoredUrl);
+        S.restoredBlob=null; S.restoredUrl=null; S.restoredMeta=null;
+        $("#result-card").style.display="none";
+        $("#result-img").removeAttribute("src");
+        $("#result-meta").innerHTML="";
+        $("#json-textarea").value="";
+      });
+      $("#btn-share-img").addEventListener("click", async ()=>{
+        if(!S.restoredBlob) return;
+        await shareBlob(S.restoredBlob, S.restoredMeta.name, S.restoredMeta.type);
+      });
+      $("#btn-save-img").addEventListener("click", async ()=>{
+        if(!S.restoredBlob) return;
+        await saveBlob(S.restoredBlob, S.restoredMeta.name, S.restoredMeta.type);
+      });
+      $("#btn-copy-img").addEventListener("click", async ()=>{
+        if(!S.restoredBlob) return;
+        try{
+          if(navigator.clipboard?.write){
+            await navigator.clipboard.write([new ClipboardItem({[S.restoredBlob.type]:S.restoredBlob})]);
+            toast("Image copied","success");
+          } else toast("Clipboard image not supported","warning");
+        }catch(_){ toast("Copy image failed","error"); }
+      });
+
+      $("#btn-ai-describe").addEventListener("click", async ()=>{
+        const it=S.items.find(x=>x.id===S.activeId);
+        if(!it?.dataUrl) return;
+        const btn=$("#btn-ai-describe");
+        btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Analyzing…';
+        const text=await callGrok("Describe this image briefly and list notable details.", it.dataUrl);
+        btn.disabled=false; btn.textContent="✦ AI: Describe Image";
+        if(text){ const box=$("#ai-result-img"); box.textContent=text; box.classList.add("visible"); }
+      });
+      $("#btn-ai-analyze").addEventListener("click", async ()=>{
+        if(!S.restoredUrl) return;
+        const btn=$("#btn-ai-analyze");
+        btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Analyzing…';
+        let dataUrl=null;
+        try{
+          const canvas=document.createElement("canvas");
+          const img=$("#result-img");
+          canvas.width=Math.min(img.naturalWidth||512,512);
+          canvas.height=Math.min(img.naturalHeight||512,512);
+          canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);
+          dataUrl=canvas.toDataURL("image/jpeg",0.7);
+        }catch(_){}
+        const prompt=`Restored PixVault image. Name: ${S.restoredMeta?.name}, Type: ${S.restoredMeta?.type}, Size: ${fmtBytes(S.restoredMeta?.size||0)}. Confirm validity and note issues.`;
+        const text=await callGrok(prompt, dataUrl);
+        btn.disabled=false; btn.textContent="✦ AI: Analyze";
+        if(text){ const box=$("#ai-result-json"); box.textContent=text; box.classList.add("visible"); }
+      });
+
+      document.addEventListener("keydown",e=>{
+        if(e.key==="Escape"){
+          $("#settings-overlay").classList.remove("visible");
+          $("#about-overlay").classList.remove("visible");
+          $("#fs-overlay").classList.remove("visible");
+        }
+      });
     }
 
-    status.textContent =
-      "⚠️ این محیط امکان ذخیره مستقیم فایل را ندارد. صفحه را در Chrome باز کن.";
-
-  }catch(err){
-
-    if(err.name === "AbortError"){
-      status.textContent =
-        "ذخیره لغو شد.";
-      return;
+    function boot(){
+      loadSettings();
+      bind();
+      window.addEventListener("beforeunload",()=>revoke(S.restoredUrl));
     }
-
-    console.error(err);
-
-    status.textContent =
-      "❌ ذخیره تصویر انجام نشد.";
-
-  }
-
-};
-
-
-/* =========================
-   HELPERS
-========================= */
-
-function formatBytes(bytes){
-
-  if(bytes < 1024)
-    return bytes + " B";
-
-  if(bytes < 1024*1024)
-    return (bytes/1024).toFixed(1) + " KB";
-
-  if(bytes < 1024*1024*1024)
-    return (bytes/(1024*1024)).toFixed(2) + " MB";
-
-  return (bytes/(1024*1024*1024)).toFixed(2) + " GB";
-}
-
-
-function removeExtension(name){
-
-  return name.replace(/\.[^/.]+$/,"");
-
-}
-
-
-function getExtension(name){
-
-  const match =
-    name.match(/\.[^/.]+$/);
-
-  return match ? match[0] : ".png";
-
-}
-
-</script>
-
+    if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot);
+    else boot();
+  })();
+  </script>
 </body>
 </html>
